@@ -7,6 +7,7 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.net.URL;
+import java.util.Arrays;
 
 import javax.swing.*;
 
@@ -14,25 +15,25 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 
 public class Base {
-
-	public Base() {
-		// TODO Auto-generated constructor stub
-	}
-
 	public static void main(String[] args) {
 		Base b = new Base();
 		b.init();
 	}
 
 	private void init() {
-		URL imageURL = Base.class.getResource("square5.JPG");
+		URL imageURL = Base.class.getResource("square3.jpg");
 
 		if (imageURL != null) {
 			ImageIcon i = new ImageIcon(imageURL);
 			BufferedImage br = toBufferedImage(i.getImage());
 
 			Raster ri = br.getRaster();
-			int[] points = findLine(ri);
+			int[] points = findLineVertical(ri);
+			
+			/*if (Arrays.comp) {
+				System.out.println("Line not found");
+				System.exit(0);
+			}*/
 
 			//Display original image
 			SwingUtilities.invokeLater(new Runnable() {
@@ -136,6 +137,11 @@ public class Base {
 		return toReturn;
 	}
 
+	/**
+	 * Finds the minimum value in array a.
+	 * @param a The array to search
+	 * @return {minimum value, index of found value}, or {0, 0} by default
+	 */
 	private int[] getMinInfo(int[] a) {
 		int min = Integer.MAX_VALUE;
 		int minIndex = -1;
@@ -151,15 +157,29 @@ public class Base {
 	}
 
 	private int[][] scanRow(Raster ri, int row) {
-		int[] r = new int[48];
-		int[] g = new int[48];
-		int[] b = new int[48];
+		int height = ri.getHeight();
+		int[] r = new int[height];
+		int[] g = new int[height];
+		int[] b = new int[height];
 
-		ri.getSamples(0, row, 48, 1, 0, r);
-		ri.getSamples(0, row, 48, 1, 1, g);
-		ri.getSamples(0, row, 48, 1, 2, b);
+		ri.getSamples(0, row, height, 1, 0, r);
+		ri.getSamples(0, row, height, 1, 1, g);
+		ri.getSamples(0, row, height, 1, 2, b);
 
-		return new int[][] {r , g, b};
+		return new int[][] {r, g, b};
+	}
+	
+	private int[][] scanCol(Raster ri, int col) {
+		int width = ri.getWidth();
+		int[] r = new int[width];
+		int[] g = new int[width];
+		int[] b = new int[width];
+
+		ri.getSamples(0, col, 1, width, 0, r);
+		ri.getSamples(0, col, 1, width, 1, g);
+		ri.getSamples(0, col, 1, width, 2, b);
+
+		return new int[][] {r, g, b};
 	}
 
 	private int average(int[] a) {
@@ -189,7 +209,8 @@ public class Base {
 		return avgTop;
 	}
 
-	private int[] findLine(Raster ri) {
+	//Only finds lines that run off the top and bottom of image
+	private int[] findLineVertical(Raster ri) {
 		int [][] containerTop = scanRow(ri, 0);
 
 		int[] r1 = containerTop[0];
@@ -209,10 +230,15 @@ public class Base {
 		int[] avgBot = averageArrays(new int[][] {r2, g2, b2});
 		int botCoord = getMinInfo(avgBot)[1];
 
-		System.out.println("Top coord : " + topCoord + " bot coord " + botCoord);
+		System.out.println("Top coord: " + topCoord + " bot coord: " + botCoord);
 		return new int[] {topCoord, botCoord};
 	}
 
+	/**
+	 * Used for drawing a line on top of an image
+	 * @author Reed
+	 *
+	 */
 	private class LineLayer extends JComponent {
 		private static final long serialVersionUID = 1L;
 		final BufferedImage bgImage;
