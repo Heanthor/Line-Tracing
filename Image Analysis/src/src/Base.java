@@ -7,7 +7,6 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.net.URL;
-import java.util.Arrays;
 
 import javax.swing.*;
 
@@ -15,25 +14,34 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
 
 public class Base {
+	private enum Side {TOP, BOTTOM, LEFT, RIGHT};
+
 	public static void main(String[] args) {
 		Base b = new Base();
 		b.init();
 	}
 
 	private void init() {
-		URL imageURL = Base.class.getResource("square3.jpg");
+		URL imageURL = Base.class.getResource("squarehori.jpg");
 
 		if (imageURL != null) {
 			ImageIcon i = new ImageIcon(imageURL);
 			BufferedImage br = toBufferedImage(i.getImage());
 
 			Raster ri = br.getRaster();
-			int[] points = findLineVertical(ri);
-			
-			/*if (Arrays.comp) {
-				System.out.println("Line not found");
-				System.exit(0);
-			}*/
+			final boolean horizontal;
+			int[] temp = findLineVertical(ri);
+			final int[] points;
+
+			if (temp[0] == 0 && temp[0] == temp[1]) {
+				//Horizontal
+				points = findLineHorizontal(ri);
+				horizontal = true;
+			} else {
+				//Vertical
+				points = temp;
+				horizontal = false;
+			}
 
 			//Display original image
 			SwingUtilities.invokeLater(new Runnable() {
@@ -44,7 +52,14 @@ public class Base {
 					f.setSize(100, 100);
 					f.setLocationByPlatform(true);
 
-					LineLayer l = new LineLayer(br, points[0], 0, points[1], ri.getHeight() - 1, Color.red);
+					//Display line
+					LineLayer l;
+					if (horizontal) {
+						l = new LineLayer(br, 0, points[0], ri.getWidth() - 1, points[1], Color.red);
+					} else {
+						l = new LineLayer(br, points[0], 0, points[1], ri.getHeight() - 1, Color.red);
+					}
+
 					f.getContentPane().add(l);
 
 					f.setVisible(true);
@@ -56,7 +71,8 @@ public class Base {
 			System.out.println("File read failed");
 		}
 	}
-
+	
+	
 	private void statistics(Raster ri) {
 		int [][] containerTop = scanRow(ri, 0);
 
@@ -168,16 +184,16 @@ public class Base {
 
 		return new int[][] {r, g, b};
 	}
-	
+
 	private int[][] scanCol(Raster ri, int col) {
 		int width = ri.getWidth();
 		int[] r = new int[width];
 		int[] g = new int[width];
 		int[] b = new int[width];
 
-		ri.getSamples(0, col, 1, width, 0, r);
-		ri.getSamples(0, col, 1, width, 1, g);
-		ri.getSamples(0, col, 1, width, 2, b);
+		ri.getSamples(col, 0, 1, width, 0, r);
+		ri.getSamples(col, 0, 1, width, 1, g);
+		ri.getSamples(col, 0, 1, width, 2, b);
 
 		return new int[][] {r, g, b};
 	}
@@ -211,27 +227,19 @@ public class Base {
 
 	//Only finds lines that run off the top and bottom of image
 	private int[] findLineVertical(Raster ri) {
-		int [][] containerTop = scanRow(ri, 0);
-
-		int[] r1 = containerTop[0];
-		int[] g1 = containerTop[1];
-		int[] b1 = containerTop[2];
-
-		int[] avgTop = averageArrays(new int[][] {r1, g1, b1});
-
-		int topCoord = getMinInfo(avgTop)[1];
-
-		int[][] containerBot = scanRow(ri, ri.getHeight() - 1);
-
-		int[] r2 = containerBot[0];
-		int[] g2 = containerBot[1];
-		int[] b2 = containerBot[2];
-
-		int[] avgBot = averageArrays(new int[][] {r2, g2, b2});
-		int botCoord = getMinInfo(avgBot)[1];
+		int topCoord = getPoint(ri, Side.TOP);
+		int botCoord = getPoint(ri, Side.BOTTOM);
 
 		System.out.println("Top coord: " + topCoord + " bot coord: " + botCoord);
 		return new int[] {topCoord, botCoord};
+	}
+
+	private int[] findLineHorizontal(Raster ri) {
+		int leftCoord = getPoint(ri, Side.LEFT);
+		int rightCoord = getPoint(ri, Side.RIGHT);
+
+		System.out.println("Left coord: " + leftCoord + " right coord: " + rightCoord);
+		return new int[] {leftCoord, rightCoord};
 	}
 
 	/**
@@ -269,6 +277,55 @@ public class Base {
 			g2.setColor(c);
 			g2.drawLine(x1, y1, x2, y2);
 
+		}
+	}
+	
+	/**
+	 * Find point on given side.
+	 * @param ri
+	 * @param s
+	 * @return
+	 */
+	private int getPoint(Raster ri, Side s) {
+		switch (s) {
+		case TOP:
+			int [][] containerTop = scanRow(ri, 0);
+
+			int[] r1 = containerTop[0];
+			int[] g1 = containerTop[1];
+			int[] b1 = containerTop[2];
+
+			int[] avgTop = averageArrays(new int[][] {r1, g1, b1});
+
+			return getMinInfo(avgTop)[1];
+		case BOTTOM:
+			int[][] containerBot = scanRow(ri, ri.getHeight() - 1);
+
+			int[] r2 = containerBot[0];
+			int[] g2 = containerBot[1];
+			int[] b2 = containerBot[2];
+
+			int[] avgBot = averageArrays(new int[][] {r2, g2, b2});
+			return getMinInfo(avgBot)[1];
+		case LEFT:
+			int [][] containerLeft = scanCol(ri, 0);
+			int[] r3 = containerLeft[0];
+			int[] g3 = containerLeft[1];
+			int[] b3 = containerLeft[2];
+
+			int[] avgLeft = averageArrays(new int[][] {r3, g3, b3});
+			return getMinInfo(avgLeft)[1];
+		case RIGHT:
+			int[][] containerRight = scanCol(ri, ri.getWidth() - 1);
+
+			int[] r4 = containerRight[0];
+			int[] g4 = containerRight[1];
+			int[] b4 = containerRight[2];
+
+			int[] avgRight = averageArrays(new int[][] {r4, g4, b4});
+			return getMinInfo(avgRight)[1];
+		default:
+			return 0;
 		}
 	}
 }
