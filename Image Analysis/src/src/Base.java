@@ -17,8 +17,7 @@ public class Base {
 	private enum Side {TOP, BOTTOM, LEFT, RIGHT};
 
 	public static void main(String[] args) {
-		Base b = new Base();
-		b.init();
+		new Base().init();
 	}
 
 	private void init() {
@@ -29,11 +28,11 @@ public class Base {
 			BufferedImage br = toBufferedImage(i.getImage());
 
 			Raster ri = br.getRaster();
-			final boolean horizontal;
+			/*final boolean horizontal;
 			int[] temp = findLineVertical(ri);
 			final int[] points;
 
-			if (temp[0] == 0 && temp[0] == temp[1]) {
+			if (temp[0] == -1 && temp[0] == temp[1]) {
 				//Horizontal
 				points = findLineHorizontal(ri);
 				horizontal = true;
@@ -41,7 +40,46 @@ public class Base {
 				//Vertical
 				points = temp;
 				horizontal = false;
+			} */
+
+			/* Order: top, right, left, bot */ 
+			int top = -2, right = -2, left = -2, bot = -2; //-2 for not set
+			int foundCount = 0;
+
+			for (int j = 0; j < 4; j++) {
+				switch (j) {
+				case 0:
+					if ((top = getPoint(ri, Side.TOP)) != -1) {
+						foundCount++;
+					}
+					break;
+				case 1:
+					if ((right = getPoint(ri, Side.RIGHT)) != -1) {
+						foundCount++;
+					}
+					break;
+				case 2:
+					if ((left = getPoint(ri, Side.LEFT)) != -1) {
+						foundCount++;
+					}
+					break;
+				case 3:
+					if ((bot = getPoint(ri, Side.BOTTOM)) != -1) {
+						foundCount++;
+					}
+					break;
+				default:
+				}
+
+				//Find 2 sides at max
+				if (foundCount == 2) {
+					break;
+				}
 			}
+			
+			//Map points to x1, y1, x2, y2
+			int[] sides = {top, right, left, bot};
+			
 
 			//Display original image
 			SwingUtilities.invokeLater(new Runnable() {
@@ -71,8 +109,8 @@ public class Base {
 			System.out.println("File read failed");
 		}
 	}
-	
-	
+
+
 	private void statistics(Raster ri) {
 		int [][] containerTop = scanRow(ri, 0);
 
@@ -156,20 +194,26 @@ public class Base {
 	/**
 	 * Finds the minimum value in array a.
 	 * @param a The array to search
-	 * @return {minimum value, index of found value}, or {0, 0} by default
+	 * @return {minimum value, index of found value}, a value of -1 if not found.
 	 */
 	private int[] getMinInfo(int[] a) {
 		int min = Integer.MAX_VALUE;
+		boolean found = false;
 		int minIndex = -1;
 
 		for (int i = 0; i < a.length; i++) {
 			if (a[i] < min) {
 				min = a[i];
 				minIndex = i;
+
+				//If a point is found after the initial point (255), min is found
+				if (i > 0) {
+					found = true;
+				}
 			}
 		}
 
-		return new int[] {min, minIndex};
+		return new int[] {min, found? minIndex : -1};
 	}
 
 	private int[][] scanRow(Raster ri, int row) {
@@ -279,7 +323,7 @@ public class Base {
 
 		}
 	}
-	
+
 	/**
 	 * Find point on given side.
 	 * @param ri
