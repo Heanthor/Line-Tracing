@@ -28,22 +28,9 @@ public class Base {
 			BufferedImage br = toBufferedImage(i.getImage());
 
 			Raster ri = br.getRaster();
-			/*final boolean horizontal;
-			int[] temp = findLineVertical(ri);
-			final int[] points;
-
-			if (temp[0] == -1 && temp[0] == temp[1]) {
-				//Horizontal
-				points = findLineHorizontal(ri);
-				horizontal = true;
-			} else {
-				//Vertical
-				points = temp;
-				horizontal = false;
-			} */
 
 			/* Order: top, right, left, bot */ 
-			int top = -2, right = -2, left = -2, bot = -2; //-2 for not set
+			int top = -1, right = -1, left = -1, bot = -1; //-1 for not set
 			int foundCount = 0;
 
 			for (int j = 0; j < 4; j++) {
@@ -76,11 +63,46 @@ public class Base {
 					break;
 				}
 			}
-			
-			//Map points to x1, y1, x2, y2
-			int[] sides = {top, right, left, bot};
-			
 
+			//Map points to x1, y1, x2, y2
+			//Direction is irrelevant
+			final int x1, y1, x2, y2;
+
+			if (top != -1) { //top is starting point
+				x1 = top;
+				y1 = 0;
+
+				if (left != -1) {
+					x2 = 0;
+					y2 = left;
+				} else if (right != -1) {
+					x2 = ri.getWidth() - 1;
+					y2 = right;
+				} else { //bottom != -1
+					x2 = bot;
+					y2 = ri.getHeight() - 1;
+				}
+			} else if (left != -1) { //left is starting point
+				x1 = 0;
+				y1 = left;
+
+				//top cannot be ending point since it was already checked
+				if (right != -1) {
+					x2 = ri.getWidth() - 1;
+					y2 = right;
+				} else { //bottom != -1
+					x2 = bot;
+					y2 = ri.getHeight() - 1;
+				}
+			} else { //No other combination but right-bot
+				x1 = ri.getWidth() - 1;
+				y1 = right;
+
+				x2 = bot;
+				y2 = ri.getHeight() - 1;
+			}
+
+			System.out.println("(" + x1 + ", " + y1 + "), (" + x1 + ", " + y2 + ")");
 			//Display original image
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
@@ -91,12 +113,7 @@ public class Base {
 					f.setLocationByPlatform(true);
 
 					//Display line
-					LineLayer l;
-					if (horizontal) {
-						l = new LineLayer(br, 0, points[0], ri.getWidth() - 1, points[1], Color.red);
-					} else {
-						l = new LineLayer(br, points[0], 0, points[1], ri.getHeight() - 1, Color.red);
-					}
+					LineLayer l = new LineLayer(br, x1, y1, x2, y2, Color.red);
 
 					f.getContentPane().add(l);
 
@@ -198,11 +215,12 @@ public class Base {
 	 */
 	private int[] getMinInfo(int[] a) {
 		int min = Integer.MAX_VALUE;
+		final int FUZZING = 30; //deviation from mean
 		boolean found = false;
 		int minIndex = -1;
 
 		for (int i = 0; i < a.length; i++) {
-			if (a[i] < min) {
+			if (a[i] < min - FUZZING) { //eliminate false positives
 				min = a[i];
 				minIndex = i;
 
@@ -268,62 +286,7 @@ public class Base {
 
 		return avgTop;
 	}
-
-	//Only finds lines that run off the top and bottom of image
-	private int[] findLineVertical(Raster ri) {
-		int topCoord = getPoint(ri, Side.TOP);
-		int botCoord = getPoint(ri, Side.BOTTOM);
-
-		System.out.println("Top coord: " + topCoord + " bot coord: " + botCoord);
-		return new int[] {topCoord, botCoord};
-	}
-
-	private int[] findLineHorizontal(Raster ri) {
-		int leftCoord = getPoint(ri, Side.LEFT);
-		int rightCoord = getPoint(ri, Side.RIGHT);
-
-		System.out.println("Left coord: " + leftCoord + " right coord: " + rightCoord);
-		return new int[] {leftCoord, rightCoord};
-	}
-
-	/**
-	 * Used for drawing a line on top of an image
-	 * @author Reed
-	 *
-	 */
-	private class LineLayer extends JComponent {
-		private static final long serialVersionUID = 1L;
-		final BufferedImage bgImage;
-		final int x1; 
-		final int y1;
-		final int x2;
-		final int y2;
-		final Color c;
-
-		public LineLayer(BufferedImage bgImage, int x1, int y1, int x2, int y2, Color color) {
-			this.bgImage = bgImage;
-			this.x1 = x1;
-			this.y1 = y1;
-			this.x2 = x2;
-			this.y2 = y2;
-			this.c = color;
-			repaint();
-		}               
-
-		protected void paintComponent(Graphics g) {
-			super.paintComponent(g);
-
-			Graphics2D g2 = (Graphics2D)g;
-			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-					RenderingHints.VALUE_ANTIALIAS_ON);
-
-			g2.drawImage(bgImage, 0, 0, this);
-			g2.setColor(c);
-			g2.drawLine(x1, y1, x2, y2);
-
-		}
-	}
-
+	
 	/**
 	 * Find point on given side.
 	 * @param ri
@@ -370,6 +333,43 @@ public class Base {
 			return getMinInfo(avgRight)[1];
 		default:
 			return 0;
+		}
+	}
+	/**
+	 * Used for drawing a line on top of an image
+	 * @author Reed
+	 *
+	 */
+	private class LineLayer extends JComponent {
+		private static final long serialVersionUID = 1L;
+		final BufferedImage bgImage;
+		final int x1; 
+		final int y1;
+		final int x2;
+		final int y2;
+		final Color c;
+
+		public LineLayer(BufferedImage bgImage, int x1, int y1, int x2, int y2, Color color) {
+			this.bgImage = bgImage;
+			this.x1 = x1;
+			this.y1 = y1;
+			this.x2 = x2;
+			this.y2 = y2;
+			this.c = color;
+			repaint();
+		}               
+
+		protected void paintComponent(Graphics g) {
+			super.paintComponent(g);
+
+			Graphics2D g2 = (Graphics2D)g;
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+					RenderingHints.VALUE_ANTIALIAS_ON);
+
+			g2.drawImage(bgImage, 0, 0, this);
+			g2.setColor(c);
+			g2.drawLine(x1, y1, x2, y2);
+
 		}
 	}
 }
