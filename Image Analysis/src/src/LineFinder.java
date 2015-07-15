@@ -12,16 +12,22 @@ import javax.swing.*;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
-
-public class Base {
+public class LineFinder {
+	/**
+	 * Represents each side of a square image
+	 * @author Reed
+	 */
 	private enum Side {TOP, BOTTOM, LEFT, RIGHT};
 
 	public static void main(String[] args) {
-		new Base().init();
+		new LineFinder().init();
 	}
 
+	/**
+	 * Launches UI, gets and draws points
+	 */
 	private void init() {
-		URL imageURL = Base.class.getResource("squarehori.jpg");
+		URL imageURL = LineFinder.class.getResource("double1.jpg");
 
 		if (imageURL != null) {
 			ImageIcon i = new ImageIcon(imageURL);
@@ -29,91 +35,19 @@ public class Base {
 
 			Raster ri = br.getRaster();
 
-			/* Order: top, right, left, bot */ 
-			int top = -1, right = -1, left = -1, bot = -1; //-1 for not set
-			int foundCount = 0;
-
-			for (int j = 0; j < 4; j++) {
-				switch (j) {
-				case 0:
-					if ((top = getPoint(ri, Side.TOP)) != -1) {
-						foundCount++;
-					}
-					break;
-				case 1:
-					if ((right = getPoint(ri, Side.RIGHT)) != -1) {
-						foundCount++;
-					}
-					break;
-				case 2:
-					if ((left = getPoint(ri, Side.LEFT)) != -1) {
-						foundCount++;
-					}
-					break;
-				case 3:
-					if ((bot = getPoint(ri, Side.BOTTOM)) != -1) {
-						foundCount++;
-					}
-					break;
-				default:
-				}
-
-				//Find 2 sides at max
-				if (foundCount == 2) {
-					break;
-				}
-			}
-
-			//Map points to x1, y1, x2, y2
-			//Direction is irrelevant
-			final int x1, y1, x2, y2;
-
-			if (top != -1) { //top is starting point
-				x1 = top;
-				y1 = 0;
-
-				if (left != -1) {
-					x2 = 0;
-					y2 = left;
-				} else if (right != -1) {
-					x2 = ri.getWidth() - 1;
-					y2 = right;
-				} else { //bottom != -1
-					x2 = bot;
-					y2 = ri.getHeight() - 1;
-				}
-			} else if (left != -1) { //left is starting point
-				x1 = 0;
-				y1 = left;
-
-				//top cannot be ending point since it was already checked
-				if (right != -1) {
-					x2 = ri.getWidth() - 1;
-					y2 = right;
-				} else { //bottom != -1
-					x2 = bot;
-					y2 = ri.getHeight() - 1;
-				}
-			} else { //No other combination but right-bot
-				x1 = ri.getWidth() - 1;
-				y1 = right;
-
-				x2 = bot;
-				y2 = ri.getHeight() - 1;
-			}
-
-			System.out.println("(" + x1 + ", " + y1 + "), (" + x1 + ", " + y2 + ")");
+			final int[] data = calculateLine(ri);
+			
 			//Display original image
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
 					JFrame f = new JFrame();
 					f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-					f.setSize(100, 100);
+					f.setSize(br.getWidth() + 100, br.getHeight() + 100);
 					f.setLocationByPlatform(true);
 
 					//Display line
-					LineLayer l = new LineLayer(br, x1, y1, x2, y2, Color.red);
+					LineLayer l = new LineLayer(br, data[0], data[1], data[2], data[3], Color.red);
 
 					f.getContentPane().add(l);
 
@@ -127,6 +61,90 @@ public class Base {
 		}
 	}
 
+	/**
+	 * Finds the line present in the provided solid-background raster.
+	 * @param ri Image raster
+	 * @return {x1, y1, x2, y2} of line
+	 */
+	public int[] calculateLine(Raster ri) {
+		/* Order: top, right, left, bot */ 
+		int top = -1, right = -1, left = -1, bot = -1; //-1 for not set
+		int foundCount = 0;
+
+		for (int j = 0; j < 4; j++) {
+			switch (j) {
+			case 0:
+				if ((top = getPoint(ri, Side.TOP)) != -1) {
+					foundCount++;
+				}
+				break;
+			case 1:
+				if ((right = getPoint(ri, Side.RIGHT)) != -1) {
+					foundCount++;
+				}
+				break;
+			case 2:
+				if ((left = getPoint(ri, Side.LEFT)) != -1) {
+					foundCount++;
+				}
+				break;
+			case 3:
+				if ((bot = getPoint(ri, Side.BOTTOM)) != -1) {
+					foundCount++;
+				}
+				break;
+			default:
+			}
+
+			//Find 2 sides at max
+			if (foundCount == 2) {
+				break;
+			}
+		}
+
+		//Map points to x1, y1, x2, y2
+		//Direction is irrelevant
+		final int x1, y1, x2, y2;
+
+		if (top != -1) { //top is starting point
+			x1 = top;
+			y1 = 0;
+
+			if (left != -1) {
+				x2 = 0;
+				y2 = left;
+			} else if (right != -1) {
+				x2 = ri.getWidth() - 1;
+				y2 = right;
+			} else { //bottom != -1
+				x2 = bot;
+				y2 = ri.getHeight() - 1;
+			}
+		} else if (left != -1) { //left is starting point
+			x1 = 0;
+			y1 = left;
+
+			//top cannot be ending point since it was already checked
+			if (right != -1) {
+				x2 = ri.getWidth() - 1;
+				y2 = right;
+			} else { //bottom != -1
+				x2 = bot;
+				y2 = ri.getHeight() - 1;
+			}
+		} else { //No other combination but right-bot
+			x1 = ri.getWidth() - 1;
+			y1 = right;
+
+			x2 = bot;
+			y2 = ri.getHeight() - 1;
+		}
+
+		System.out.println("(" + x1 + ", " + y1 + "), (" + x2 + ", " + y2 + ")");
+		final int[] data = {x1, y1, x2, y2};
+		
+		return data;
+	}
 
 	private void statistics(Raster ri) {
 		int [][] containerTop = scanRow(ri, 0);
@@ -235,27 +253,27 @@ public class Base {
 	}
 
 	private int[][] scanRow(Raster ri, int row) {
-		int height = ri.getHeight();
-		int[] r = new int[height];
-		int[] g = new int[height];
-		int[] b = new int[height];
-
-		ri.getSamples(0, row, height, 1, 0, r);
-		ri.getSamples(0, row, height, 1, 1, g);
-		ri.getSamples(0, row, height, 1, 2, b);
-
-		return new int[][] {r, g, b};
-	}
-
-	private int[][] scanCol(Raster ri, int col) {
 		int width = ri.getWidth();
 		int[] r = new int[width];
 		int[] g = new int[width];
 		int[] b = new int[width];
 
-		ri.getSamples(col, 0, 1, width, 0, r);
-		ri.getSamples(col, 0, 1, width, 1, g);
-		ri.getSamples(col, 0, 1, width, 2, b);
+		ri.getSamples(0, row, width, 1, 0, r);
+		ri.getSamples(0, row, width, 1, 1, g);
+		ri.getSamples(0, row, width, 1, 2, b);
+
+		return new int[][] {r, g, b};
+	}
+
+	private int[][] scanCol(Raster ri, int col) {
+		int height = ri.getHeight();
+		int[] r = new int[height];
+		int[] g = new int[height];
+		int[] b = new int[height];
+
+		ri.getSamples(col, 0, 1, height, 0, r);
+		ri.getSamples(col, 0, 1, height, 1, g);
+		ri.getSamples(col, 0, 1, height, 2, b);
 
 		return new int[][] {r, g, b};
 	}
