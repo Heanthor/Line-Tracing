@@ -27,6 +27,9 @@ public class LineFinder {
 
 	private ArrayList<Integer> foundIndexes = new ArrayList<Integer>();
 	
+	/**
+	 * Current image being displayed
+	 */
 	private Component currentImage;
 
 	public static void main(String[] args) {
@@ -37,7 +40,7 @@ public class LineFinder {
 	 * Launches UI, gets and draws points
 	 */
 	private void init() {
-		URL imageURL = LineFinder.class.getResource("square8.jpg");
+		URL imageURL = LineFinder.class.getResource("images/square8.jpg");
 
 		if (imageURL != null) {
 			ImageIcon i = new ImageIcon(imageURL);
