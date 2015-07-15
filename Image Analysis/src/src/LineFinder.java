@@ -1,12 +1,18 @@
 package src;
+import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
+import java.awt.SystemColor;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.Raster;
 import java.net.URL;
+import java.util.ArrayList;
 
 import javax.swing.*;
 
@@ -19,6 +25,10 @@ public class LineFinder {
 	 */
 	private enum Side {TOP, BOTTOM, LEFT, RIGHT};
 
+	private ArrayList<Integer> foundIndexes = new ArrayList<Integer>();
+	
+	private Component currentImage;
+
 	public static void main(String[] args) {
 		new LineFinder().init();
 	}
@@ -27,7 +37,7 @@ public class LineFinder {
 	 * Launches UI, gets and draws points
 	 */
 	private void init() {
-		URL imageURL = LineFinder.class.getResource("double1.jpg");
+		URL imageURL = LineFinder.class.getResource("square8.jpg");
 
 		if (imageURL != null) {
 			ImageIcon i = new ImageIcon(imageURL);
@@ -36,28 +46,53 @@ public class LineFinder {
 			Raster ri = br.getRaster();
 
 			final int[] data = calculateLine(ri);
-			
+
 			//Display original image
 			SwingUtilities.invokeLater(new Runnable() {
 				@Override
 				public void run() {
-					JFrame f = new JFrame();
-					f.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-					f.setSize(br.getWidth() + 100, br.getHeight() + 100);
-					f.setLocationByPlatform(true);
+					JFrame frame = new JFrame();
+					frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+					frame.setSize(br.getWidth() + 100, br.getHeight() + 100);
+
+					frame.getContentPane().setLayout(new BorderLayout(0, 0));
+
+					JPanel panel = new JPanel();
+					panel.setBackground(SystemColor.control);
+					frame.getContentPane().add(panel, BorderLayout.SOUTH);
+
+					JButton btnToggleLine = new JButton("Toggle Line");
+					panel.add(btnToggleLine);
+
+					/* Toggle between original and traced images */
+					btnToggleLine.addActionListener(new ActionListener() {
+						public void actionPerformed(ActionEvent arg0) {
+							if (currentImage instanceof LineLayer) {
+								frame.getContentPane().remove(currentImage);
+								currentImage = frame.getContentPane().add(new PicLayer(br));
+								frame.revalidate();
+							} else {
+								frame.getContentPane().remove(currentImage);
+								currentImage = frame.getContentPane().add(new LineLayer(br, data[0], data[1], data[2], data[3], Color.red));
+								frame.revalidate();
+							}
+						}
+					});
 
 					//Display line
-					LineLayer l = new LineLayer(br, data[0], data[1], data[2], data[3], Color.red);
+					JComponent l = new LineLayer(br, data[0], data[1], data[2], data[3], Color.red);
 
-					f.getContentPane().add(l);
-
-					f.setVisible(true);
+					currentImage = frame.getContentPane().add(l);
+					
+					frame.setLocationByPlatform(true);
+					frame.setVisible(true);
 				}
 			});
 
 			//statistics(ri);
 		} else {
 			System.out.println("File read failed");
+			System.exit(1);
 		}
 	}
 
@@ -142,7 +177,7 @@ public class LineFinder {
 
 		System.out.println("(" + x1 + ", " + y1 + "), (" + x2 + ", " + y2 + ")");
 		final int[] data = {x1, y1, x2, y2};
-		
+
 		return data;
 	}
 
@@ -304,7 +339,7 @@ public class LineFinder {
 
 		return avgTop;
 	}
-	
+
 	/**
 	 * Find point on given side.
 	 * @param ri
@@ -387,7 +422,25 @@ public class LineFinder {
 			g2.drawImage(bgImage, 0, 0, this);
 			g2.setColor(c);
 			g2.drawLine(x1, y1, x2, y2);
+		}
+	}
 
+	private class PicLayer extends JComponent {
+		private static final long serialVersionUID = 1L;
+		final BufferedImage bgImage;
+
+		public PicLayer(BufferedImage bgImage) {
+			this.bgImage = bgImage;
+		}
+
+		protected void paintComponent(Graphics g) {
+			super.paintComponent(g);
+
+			Graphics2D g2 = (Graphics2D)g;
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+					RenderingHints.VALUE_ANTIALIAS_ON);
+
+			g2.drawImage(bgImage, 0, 0, this);
 		}
 	}
 }
